@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Data Nilai Siswa</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background-color: #f4f6f9;
+      color: #333;
+      padding-bottom: 60px;
+    }
+
+    .logo {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 60px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 100px auto 40px;
+      background: #fff;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-weight: 600;
+      color: #2e3c60;
+    }
+
+    form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    input[type="text"], input[type="number"] {
+      padding: 12px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      width: 22%;
+    }
+
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      background-color: #2e3c60;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background-color: #1e2b48;
+    }
+
+    #search {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      margin-bottom: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+
+    th {
+      background-color: #e8eef7;
+      color: #2e3c60;
+    }
+
+    .back-btn {
+      display: block;
+      margin: 30px auto 0;
+      padding: 12px 30px;
+      background-color: #2196f3;
+      color: white;
+      text-decoration: none;
+      border-radius: 14px;
+      font-weight: bold;
+      text-align: center;
+      width: fit-content;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      font-size: 14px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+
+  <img src="/static/logo.png" class="logo" alt="Logo Sekolah"/>
+
+  <div class="container">
+    <h1>📈 Data Nilai Siswa</h1>
+
+    <form id="form-nilai">
+      <input type="text" id="nama" placeholder="Nama Siswa" required />
+      <input type="text" id="mapel" placeholder="Mata Pelajaran" required />
+      <input type="number" id="nilai" placeholder="Nilai" required />
+      <input type="text" id="kelas" placeholder="Kelas" required />
+      <button type="submit">Simpan</button>
+    </form>
+
+    <input type="text" id="search" placeholder="🔍 Cari berdasarkan nama siswa...">
+
+    <table>
+      <thead>
+        <tr>
+          <th>Nama</th>
+          <th>Mata Pelajaran</th>
+          <th>Nilai</th>
+          <th>Kelas</th>
+          <th>Keterangan</th>
+          <th>Rata-rata</th>
+        </tr>
+      </thead>
+      <tbody id="nilai-body"></tbody>
+    </table>
+
+    <a href="/" class="back-btn">⬅️ Kembali ke Menu Utama</a>
+  </div>
+
+  <footer>
+    <p id="datetime">Memuat waktu...</p>
+  </footer>
+
+  <script>
+    const form = document.getElementById('form-nilai');
+    const tbody = document.getElementById('nilai-body');
+    const search = document.getElementById('search');
+    let nilaiList = [];
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const data = {
+        nama: document.getElementById('nama').value,
+        mapel: document.getElementById('mapel').value,
+        nilai: parseInt(document.getElementById('nilai').value),
+        kelas: document.getElementById('kelas').value,
+      };
+
+      nilaiList.push(data);
+      await simpanData();
+      form.reset();
+      renderData();
+    });
+
+    function hitungRataRata(nilaiArr) {
+      const total = nilaiArr.reduce((acc, val) => acc + val, 0);
+      return total / nilaiArr.length;
+    }
+
+    function renderData() {
+      const filter = search.value.toLowerCase();
+      tbody.innerHTML = '';
+
+      const grouped = nilaiList.reduce((acc, n) => {
+        if (!acc[n.nama]) {
+          acc[n.nama] = { nama: n.nama, kelas: n.kelas, mapel: [], nilai: [] };
+        }
+        acc[n.nama].mapel.push(n.mapel);
+        acc[n.nama].nilai.push(n.nilai);
+        return acc;
+      }, {});
+
+      for (const siswa in grouped) {
+        const data = grouped[siswa];
+        if (!data.nama.toLowerCase().includes(filter)) continue;
+
+        const rataRata = hitungRataRata(data.nilai);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${data.nama}</td>
+          <td>${data.mapel.join(', ')}</td>
+          <td>${data.nilai.join(', ')}</td>
+          <td>${data.kelas}</td>
+          <td>${rataRata >= 75 ? 'Lulus' : 'Remedial'}</td>
+          <td>${rataRata.toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function simpanData() {
+      await fetch('/api/nilai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nilaiList),
+      });
+    }
+
+    async function loadData() {
+      const res = await fetch('/api/nilai');
+      nilaiList = await res.json();
+      renderData();
+    }
+
+    search.addEventListener('input', renderData);
+    loadData();
+
+    function updateDateTime() {
+      const now = new Date();
+      document.getElementById('datetime').textContent = now.toLocaleString('id-ID', {
+        weekday: 'long', year: 'numeric', month: 'long',
+        day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+    }
+
+    setInterval(updateDateTime, 1000);
+    updateDateTime();
+  </script>
+</body>
+</html>

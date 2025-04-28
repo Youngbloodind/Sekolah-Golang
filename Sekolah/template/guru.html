@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Data Guru</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background-color: #f4f6f9;
+      color: #333;
+      padding-bottom: 80px;
+    }
+
+    .logo {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 60px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 100px auto 40px;
+      background: #fff;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-weight: 600;
+      color: #2e3c60;
+    }
+
+    form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    input[type="text"], input[type="email"], input[type="file"] {
+      padding: 12px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      width: 28%;
+    }
+
+    #foto-preview {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid #ddd;
+    }
+
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      background-color: #2e3c60;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background-color: #1e2b48;
+    }
+
+    #search {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      margin-bottom: 20px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background-color: #fff;
+      border-radius: 15px;
+      padding: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      text-align: center;
+      transition: transform 0.2s;
+    }
+
+    .card:hover {
+      transform: scale(1.02);
+    }
+
+    .card img {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #2e3c60;
+      margin-bottom: 10px;
+    }
+
+    .card h3 {
+      margin: 5px 0;
+      color: #2e3c60;
+    }
+
+    .card p {
+      margin: 3px 0;
+    }
+
+    .card button {
+      margin: 4px;
+      padding: 8px 14px;
+      font-size: 14px;
+    }
+
+    .edit-btn {
+      background-color: #4caf50;
+    }
+
+    .delete-btn {
+      background-color: #f44336;
+    }
+
+    .back-btn {
+      display: block;
+      margin: 30px auto 0;
+      padding: 12px 30px;
+      background-color: #2196f3;
+      color: white;
+      text-decoration: none;
+      border-radius: 14px;
+      font-weight: bold;
+      text-align: center;
+      width: fit-content;
+    }
+
+    footer {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      background-color: #2e3c60;
+      color: white;
+      text-align: center;
+      padding: 10px 0;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <img src="/static/logo.png" class="logo" alt="Logo Sekolah"/>
+
+  <div class="container">
+    <h1>👩‍🏫 Data Guru</h1>
+
+    <form id="form-guru">
+      <input type="text" id="nuptk" placeholder="NUPTK" required>
+      <input type="text" id="nama" placeholder="Nama Guru" required>
+      <input type="text" id="mapel" placeholder="Mata Pelajaran" required>
+      <input type="email" id="email" placeholder="Email" required>
+      <input type="file" id="foto" accept="image/*" required>
+      <img id="foto-preview" src="" alt="Preview Foto" />
+      <button type="submit">Simpan</button>
+    </form>
+
+    <input type="text" id="search" placeholder="🔍 Cari guru...">
+
+    <div class="cards" id="guru-container"></div>
+
+    <a href="/" class="back-btn">⬅️ Kembali ke Menu Utama</a>
+  </div>
+
+  <footer>
+    <p id="datetime">Memuat waktu...</p>
+  </footer>
+
+  <script>
+    let guruList = [];
+    let editIndex = -1;
+
+    const form = document.getElementById('form-guru');
+    const container = document.getElementById('guru-container');
+    const fotoInput = document.getElementById('foto');
+    const fotoPreview = document.getElementById('foto-preview');
+    const search = document.getElementById('search');
+
+    fotoInput.addEventListener('change', () => {
+      const file = fotoInput.files[0];
+      if (file) {
+        fotoPreview.src = URL.createObjectURL(file);
+      }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      let fotoUrl = '';
+      if (fotoInput.files[0]) {
+        const formData = new FormData();
+        formData.append('file', fotoInput.files[0]);
+        const res = await fetch('/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        fotoUrl = data.url;
+      }
+
+      const guru = {
+        nuptk: document.getElementById('nuptk').value,
+        nama: document.getElementById('nama').value,
+        mapel: document.getElementById('mapel').value,
+        email: document.getElementById('email').value,
+        foto: fotoUrl || guruList[editIndex]?.foto
+      };
+
+      if (editIndex !== -1) {
+        guruList[editIndex] = guru;
+        editIndex = -1;
+      } else {
+        guruList.push(guru);
+      }
+
+      await simpanData();
+      form.reset();
+      fotoPreview.src = '';
+      renderGuru();
+    });
+
+    function renderGuru() {
+      const filter = search.value.toLowerCase();
+      container.innerHTML = '';
+
+      guruList.forEach((g, i) => {
+        if (
+          g.nama.toLowerCase().includes(filter) ||
+          g.mapel.toLowerCase().includes(filter) ||
+          g.nuptk.toLowerCase().includes(filter)
+        ) {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <img src="${g.foto}" alt="Foto Guru">
+            <h3>${g.nama}</h3>
+            <p>NUPTK: ${g.nuptk}</p>
+            <p>Mapel: ${g.mapel}</p>
+            <p>Email: ${g.email}</p>
+            <button class="edit-btn" onclick="editGuru(${i})">Edit</button>
+            <button class="delete-btn" onclick="hapusGuru(${i})">Hapus</button>
+          `;
+          container.appendChild(card);
+        }
+      });
+    }
+
+    function editGuru(index) {
+      const g = guruList[index];
+      document.getElementById('nuptk').value = g.nuptk;
+      document.getElementById('nama').value = g.nama;
+      document.getElementById('mapel').value = g.mapel;
+      document.getElementById('email').value = g.email;
+      fotoPreview.src = g.foto;
+      editIndex = index;
+    }
+
+    async function hapusGuru(index) {
+      guruList.splice(index, 1);
+      await simpanData();
+      renderGuru();
+    }
+
+    async function simpanData() {
+      await fetch("/api/guru", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(guruList),
+      });
+    }
+
+    async function loadData() {
+      const res = await fetch("/api/guru");
+      guruList = await res.json();
+      renderGuru();
+    }
+
+    search.addEventListener('input', renderGuru);
+
+    loadData();
+
+    function updateDateTime() {
+      const now = new Date();
+      document.getElementById('datetime').textContent = now.toLocaleString('id-ID', {
+        weekday: 'long', year: 'numeric', month: 'long',
+        day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+    }
+
+    setInterval(updateDateTime, 1000);
+    updateDateTime();
+  </script>
+</body>
+</html>

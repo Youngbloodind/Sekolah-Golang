@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Jadwal Pembelajaran</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #fefbe9;
+      color: #5e412f;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      padding: 10px 15px;
+      background-color: #6b8e23;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 5px;
+      text-decoration: none;
+    }
+
+    .btn:hover {
+      background-color: #556b2f;
+    }
+
+    input {
+      padding: 8px;
+      margin: 5px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #6b8e23;
+      color: white;
+    }
+
+    footer {
+      margin-top: 40px;
+      padding: 15px;
+      text-align: center;
+      background-color: #e1eedd;
+      border-radius: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🗓️ Jadwal Pembelajaran</h1>
+
+  <a href="/" class="btn">🏠 Menu Utama</a>
+  <button class="btn" onclick="exportPDF()">📄 Export PDF</button>
+
+  <input type="text" id="searchInput" placeholder="Cari kelas/mapel/guru...">
+
+  <form onsubmit="addJadwal(event)">
+    <input type="text" id="kelas" placeholder="Kelas" required>
+    <input type="text" id="hari" placeholder="Hari" required>
+    <input type="text" id="jam" placeholder="Jam" required>
+    <input type="text" id="mapel" placeholder="Mata Pelajaran" required>
+    <input type="text" id="guru" placeholder="Nama Guru" required>
+    <button class="btn" type="submit">Tambah</button>
+  </form>
+
+  <table id="jadwalTable">
+    <thead>
+      <tr>
+        <th>Kelas</th>
+        <th>Hari</th>
+        <th>Jam</th>
+        <th>Mata Pelajaran</th>
+        <th>Guru</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <footer>
+    <p id="datetime">Memuat waktu...</p>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    let dataJadwal = []
+
+    function loadJadwal() {
+      fetch('/api/jadwal')
+        .then(res => res.json())
+        .then(data => {
+          dataJadwal = data
+          renderTable()
+        })
+    }
+
+    function renderTable(filter = "") {
+      const tbody = document.querySelector("#jadwalTable tbody")
+      tbody.innerHTML = ''
+
+      const grouped = {}
+      dataJadwal.forEach(j => {
+        if (!grouped[j.kelas]) grouped[j.kelas] = {}
+        if (!grouped[j.kelas][j.hari]) grouped[j.kelas][j.hari] = []
+        grouped[j.kelas][j.hari].push(j)
+      })
+
+      Object.keys(grouped).sort().forEach(kelas => {
+        Object.keys(grouped[kelas]).sort().forEach(hari => {
+          grouped[kelas][hari].forEach((item, i) => {
+            if (filter && !kelas.toLowerCase().includes(filter) && !item.mapel.toLowerCase().includes(filter) && !item.guru.toLowerCase().includes(filter)) return;
+            const tr = document.createElement('tr')
+            if (i === 0) {
+              const tdKelas = document.createElement('td')
+              tdKelas.rowSpan = grouped[kelas][hari].length
+              tdKelas.textContent = kelas
+              tr.appendChild(tdKelas)
+
+              const tdHari = document.createElement('td')
+              tdHari.rowSpan = grouped[kelas][hari].length
+              tdHari.textContent = hari
+              tr.appendChild(tdHari)
+            }
+
+            tr.innerHTML += `
+              <td>${item.jam}</td>
+              <td>${item.mapel}</td>
+              <td>${item.guru}</td>
+              <td>
+                <button class="btn" onclick="editJadwal(${getIndex(item)})">✏️</button>
+                <button class="btn" onclick="deleteJadwal(${getIndex(item)})" style="background:#e53935;">🗑️</button>
+              </td>
+            `
+            tbody.appendChild(tr)
+          })
+        })
+      })
+    }
+
+    function getIndex(item) {
+      return dataJadwal.findIndex(j => j.kelas === item.kelas && j.hari === item.hari && j.jam === item.jam && j.mapel === item.mapel && j.guru === item.guru)
+    }
+
+    function addJadwal(e) {
+      e.preventDefault()
+      const kelas = document.getElementById('kelas').value
+      const hari = document.getElementById('hari').value
+      const jam = document.getElementById('jam').value
+      const mapel = document.getElementById('mapel').value
+      const guru = document.getElementById('guru').value
+      dataJadwal.push({ kelas, hari, jam, mapel, guru })
+      saveJadwal()
+    }
+
+    function editJadwal(index) {
+      const item = dataJadwal[index]
+      document.getElementById('kelas').value = item.kelas
+      document.getElementById('hari').value = item.hari
+      document.getElementById('jam').value = item.jam
+      document.getElementById('mapel').value = item.mapel
+      document.getElementById('guru').value = item.guru
+      dataJadwal.splice(index, 1)
+    }
+
+    function deleteJadwal(index) {
+      if (confirm("Yakin ingin menghapus jadwal ini?")) {
+        dataJadwal.splice(index, 1)
+        saveJadwal()
+      }
+    }
+
+    function saveJadwal() {
+      fetch('/api/jadwal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dataJadwal)
+      }).then(() => {
+        document.querySelector('form').reset()
+        loadJadwal()
+      })
+    }
+
+    function exportPDF() {
+      const { jsPDF } = window.jspdf
+      const doc = new jsPDF()
+      let y = 10
+      doc.setFontSize(14)
+      doc.text("Jadwal Pembelajaran", 10, y)
+      y += 10
+
+      Object.keys(dataJadwal.reduce((acc, cur) => {
+        acc[cur.kelas + ' - ' + cur.hari] = true
+        return acc
+      }, {})).sort().forEach(gr => {
+        const [kelas, hari] = gr.split(" - ")
+        doc.setFontSize(12)
+        doc.text(`Kelas ${kelas} - ${hari}`, 10, y)
+        y += 8
+        dataJadwal.filter(j => j.kelas === kelas && j.hari === hari).forEach(item => {
+          doc.setFontSize(10)
+          doc.text(`- ${item.jam} | ${item.mapel} (${item.guru})`, 12, y)
+          y += 6
+        })
+        y += 4
+      })
+
+      doc.save('jadwal_pembelajaran.pdf')
+    }
+
+    document.getElementById("searchInput").addEventListener("input", function () {
+      const keyword = this.value.toLowerCase()
+      renderTable(keyword)
+    })
+
+    function updateDateTime() {
+      const now = new Date()
+      document.getElementById('datetime').textContent = now.toLocaleString('id-ID', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+    }
+
+    setInterval(updateDateTime, 1000)
+    updateDateTime()
+    loadJadwal()
+  </script>
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Data Siswa</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: #121212;
+      color: #fff;
+      min-height: 100vh;
+    }
+
+    .logo {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 60px;
+    }
+
+    .container {
+      padding: 30px 20px;
+      max-width: 1100px;
+      margin: 120px auto 40px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #90caf9;
+    }
+
+    form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 25px;
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 16px;
+    }
+
+    input[type="text"], input[type="file"] {
+      padding: 10px;
+      font-size: 14px;
+      width: 30%;
+      background: #2c2c2c;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 10px;
+    }
+
+    button {
+      padding: 12px 20px;
+      background: #2196f3;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #1565c0;
+    }
+
+    #cari {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 20px;
+      background: #2c2c2c;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 10px;
+    }
+
+    .card-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: #1e1e1e;
+      padding: 15px;
+      border-radius: 15px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .card img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 50%;
+      margin-bottom: 10px;
+      border: 2px solid #2196f3;
+    }
+
+    .card h3 {
+      margin: 5px 0;
+      color: #90caf9;
+    }
+
+    .card p {
+      margin: 4px 0;
+    }
+
+    .actions button {
+      margin: 5px 4px;
+      padding: 6px 12px;
+      font-size: 13px;
+      border: none;
+      border-radius: 8px;
+    }
+
+    .edit-btn { background: #4caf50; }
+    .hapus-btn { background: #f44336; }
+
+    .edit-btn:hover { background: #388e3c; }
+    .hapus-btn:hover { background: #c62828; }
+
+    .back-btn {
+      display: block;
+      text-align: center;
+      margin: 30px auto 10px;
+      text-decoration: none;
+      background: #2196f3;
+      padding: 12px 30px;
+      color: white;
+      border-radius: 14px;
+      font-weight: bold;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 14px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+
+  <img src="/static/logo.png" class="logo" alt="Logo Sekolah">
+
+  <div class="container">
+    <h1>👨‍🎓 Data Siswa</h1>
+
+    <form id="form-siswa">
+      <input type="text" id="nip" placeholder="NIP Siswa" required>
+      <input type="text" id="nama" placeholder="Nama Siswa" required>
+      <input type="text" id="kelas" placeholder="Kelas" required>
+      <input type="file" id="foto">
+      <button type="submit">Simpan</button>
+    </form>
+
+    <input type="text" id="cari" placeholder="🔍 Cari berdasarkan NIP / Nama / Kelas">
+
+    <div class="card-list" id="card-list"></div>
+
+    <a href="/" class="back-btn">⬅️ Kembali ke Menu Utama</a>
+  </div>
+
+  <footer>
+    <p id="datetime">Memuat waktu...</p>
+  </footer>
+
+  <script>
+    function updateDateTime() {
+      const now = new Date();
+      document.getElementById('datetime').textContent = now.toLocaleString('id-ID', {
+        weekday: 'long', year: 'numeric', month: 'long',
+        day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+    }
+
+    setInterval(updateDateTime, 1000);
+    updateDateTime();
+
+    const form = document.getElementById('form-siswa');
+    const cardList = document.getElementById('card-list');
+    const cariInput = document.getElementById('cari');
+
+    let siswaList = [];
+    let editIndex = -1;
+
+    async function fetchData() {
+      const res = await fetch("/api/siswa");
+      siswaList = await res.json();
+      renderCards();
+    }
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const nip = document.getElementById('nip').value;
+      const nama = document.getElementById('nama').value;
+      const kelas = document.getElementById('kelas').value;
+      const file = document.getElementById('foto').files[0];
+
+      let fotoUrl = siswaList[editIndex]?.foto || "";
+
+      if (file) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/upload", { method: "POST", body: formData });
+        const data = await res.json();
+        fotoUrl = data.url;
+      }
+
+      const newSiswa = { nip, nama, kelas, foto: fotoUrl };
+
+      if (editIndex !== -1) {
+        siswaList[editIndex] = newSiswa;
+        editIndex = -1;
+      } else {
+        siswaList.push(newSiswa);
+      }
+
+      await saveData();
+      form.reset();
+      renderCards();
+    });
+
+    function renderCards() {
+      const filter = cariInput.value.toLowerCase();
+      cardList.innerHTML = '';
+      siswaList.forEach((siswa, index) => {
+        if (
+          siswa.nama.toLowerCase().includes(filter) ||
+          siswa.kelas.toLowerCase().includes(filter) ||
+          siswa.nip.toLowerCase().includes(filter)
+        ) {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <img src="${siswa.foto || '/static/default.png'}" alt="Foto">
+            <h3>${siswa.nama}</h3>
+            <p>NIP: ${siswa.nip}</p>
+            <p>Kelas: ${siswa.kelas}</p>
+            <div class="actions">
+              <button class="edit-btn" onclick="editSiswa(${index})">Edit</button>
+              <button class="hapus-btn" onclick="hapusSiswa(${index})">Hapus</button>
+            </div>
+          `;
+          cardList.appendChild(card);
+        }
+      });
+    }
+
+    cariInput.addEventListener('input', renderCards);
+
+    function editSiswa(index) {
+      const siswa = siswaList[index];
+      document.getElementById('nip').value = siswa.nip;
+      document.getElementById('nama').value = siswa.nama;
+      document.getElementById('kelas').value = siswa.kelas;
+      editIndex = index;
+    }
+
+    async function hapusSiswa(index) {
+      siswaList.splice(index, 1);
+      await saveData();
+      renderCards();
+    }
+
+    async function saveData() {
+      await fetch("/api/siswa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(siswaList),
+      });
+    }
+
+    fetchData();
+  </script>
+</body>
+</html>
